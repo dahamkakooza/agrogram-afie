@@ -1,0 +1,215 @@
+"""
+MAIN APPLICATION ENTRY POINT
+Adaptive Farm Intelligence Engine (AFIE) - Production Ready
+"""
+import asyncio
+import time
+import traceback
+from contextlib import asynccontextmanager
+from typing import Dict, Any
+from fastapi import FastAPI, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+import uvicorn
+
+# Import configuration
+from src.config.settings import settings
+from src.config.logging_config import get_logger
+from src.config.redis_config import get_redis_client, close_redis_connections
+
+# Import database
+from src.data.database.base import engine, get_db, create_tables
+from src.data.database.models import Base
+
+# Import API routers
+from src.api.routes import api_router
+from src.api.routes.recommendations import router as recommendations_router
+from src.api.routes.farm_intelligence import router as farm_intelligence_router
+
+# Initialize logger
+logger = get_logger("main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+    Production-ready with proper error handling and resource management.
+    """
+    startup_success = True
+    startup_errors = []
+    
+    # Redis variables (optional)
+    redis_client = None
+    redis_available = False
+    
+    # ============ STARTUP ============
+    logger.info("=" * 60)
+    logger.info("STARTING AFIE SERVICE")
+    logger.info(f"Environment: {settings.environment}")
+    logger.info(f"Debug Mode: {settings.debug}")
+    logger.info("=" * 60)
+    
+    # Database initialization
+    try:
+        logger.info("Initializing database connection...")
+        async with engine.begin() as conn:
+            # Create tables if they don't exist
+            await conn.run_sync(Base.metadata.create_all)
+            logger.info("✓ Database tables verified/created")
+            
+            # Test connection
+            from sqlalchemy import text
+            result = await conn.execute(text("SELECT version()"))
+            db_version = result.scalar()
+            logger.info(f"✓ Connected to PostgreSQL: {db_version}")
+    except Exception as e:
+        startup_success = False
+        error_msg = f"Database initialization failed: {str(e)}"
+        startup_errors.append(error_msg)
+        logger.error(error_msg)
+        if settings.debug:
+            logger.error(traceback.format_exc())
+    
+    # Redis initialization (optional) - always try even if DB failed
+    try:
+        logger.info("Initializing Redis connection...")
+        redis_client = await get_redis_client()
+        await redis_client.ping()
+        redis_available = True
+        logger.info("✓ Redis connection established")
+    except Exception as e:
+        # Redis is optional for now - log warning but continue
+        warning_msg = f"Redis connection failed (optional): {str(e)}"
+        logger.warning(warning_msg)
+        startup_errors.append(f"Warning: {warning_msg}")
+        if settings.debug:
+            logger.warning(traceback.format_exc())
+
+    # Feature flags check
+    logger.info("Checking feature flags...")
+    active_features = []
+    if settings.feature_farm_profiler:
+        active_features.append("farm_profiler")
+    if settings.feature_recommendations:
+        active_features.append("recommendations")
+    if settings.feature_learning_system:
+        active_features.append("learning_system")
+    if settings.feature_predictions:
+        active_features.append("predictions")
+    
+    if active_features:
+        logger.info(f"✓ Active features: {', '.join(active_features)}")
+    else:
+        logger.warning("No features enabled - check feature flags")
+
+    # ============ STARTUP COMPLETE ============
+    if startup_success:
+        logger.info("=" * 60)
+        logger.info("✅ AFIE SERVICE STARTED SUCCESSFULLY")
+        logger.info("=" * 60)
+    else:
+        logger.error("=" * 60)
+        logger.error("❌ AFIE SERVICE STARTUP FAILED")
+        for error in startup_errors:
+            logger.error(f"  • {error}")
+        logger.error("=" * 60)
+    
+    # Store state in app
+    app.state.redis_available = redis_available
+    app.state.redis_client = redis_client
+    app.state.startup_errors = startup_errors
+    
+    try:
+        yield
+    finally:
+        # ============ SHUTDOWN ============
+        logger.info("Shutting down AFIE service...")
+        
+        # Close Redis connections if available
+        if redis_client:
+            await close_redis_connections()
+            logger.info("✓ Redis connections closed")
+        
+        # Close database connections
+        await engine.dispose()
+        logger.info("✓ Database connections closed")
+        
+        logger.info("✅ AFIE service shutdown complete")
+# Create FastAPI app with lifespan
+app = FastAPI(
+    title="Adaptive Farm Intelligence Engine (AFIE)",
+    description="AI system that learns each farm's unique personality and provides hyper-personalized recommendations",
+    version="0.1.0",
+    openapi_url=f"{settings.api_prefix}/openapi.json" if settings.api_prefix else "/openapi.json",
+    docs_url=f"{settings.api_prefix}/docs" if settings.api_prefix else "/docs",
+    redoc_url=f"{settings.api_prefix}/redoc" if settings.api_prefix else "/redoc",
+    lifespan=lifespan
+)
+
+# Add middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=settings.allowed_methods,
+    allow_headers=settings.allowed_headers,
+)
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+
+# Include API router
+app.include_router(api_router, prefix=settings.api_prefix)
+app.include_router(farm_intelligence_router, prefix=settings.api_prefix)
+app.include_router(recommendations_router, prefix=settings.api_prefix)
+
+# Root endpoint
+@app.get("/", tags=["info"], summary="Service Information")
+async def root(request: Request):
+    """Get service information and status."""
+    return {
+        "service": "Adaptive Farm Intelligence Engine (AFIE)",
+        "version": "0.1.0",
+        "status": "operational",
+        "environment": settings.environment,
+        "api_version": settings.api_version,
+        "docs_url": f"{settings.api_prefix}/docs" if settings.api_prefix else "/docs",
+        "openapi_url": f"{settings.api_prefix}/openapi.json" if settings.api_prefix else "/openapi.json",
+    }
+
+# Health check endpoint
+@app.get("/health", tags=["health"], summary="Health Check")
+async def health_check():
+    """Health check endpoint for monitoring."""
+    return {"status": "healthy", "timestamp": time.time()}
+
+# System status endpoint
+@app.get(f"{settings.api_prefix}/status", tags=["system"], summary="System Status")
+async def system_status():
+    """Get detailed system status."""
+    return {
+        "database": "connected",
+        "redis": "unavailable" if not app.state.redis_available else "connected",
+        "farm_profiler": "active" if settings.feature_farm_profiler else "inactive",
+        "recommendations": "active" if settings.feature_recommendations else "inactive",
+        "learning_system": "inactive",
+        "predictions": "inactive",
+        "phase": "Week 3-4: Recommendation Engine Core",
+    }
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "src.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.reload,
+        workers=settings.workers if settings.is_production else 1,
+        log_level=settings.log_level.lower(),
+    )

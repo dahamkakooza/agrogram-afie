@@ -1,0 +1,88 @@
+"""
+MAIN APPLICATION ENTRY POINT
+Adaptive Farm Intelligence Engine (AFIE) - Production Ready
+"""
+import asyncio
+import time
+import traceback
+from contextlib import asynccontextmanager
+from typing import Dict, Any
+from fastapi import FastAPI, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+import uvicorn
+
+# Import configuration
+from src.config.settings import settings
+from src.config.logging_config import get_logger
+from src.config.redis_config import get_redis_client, close_redis_connections
+
+# Import database
+from src.data.database.base import engine, get_db, create_tables
+from src.data.database.models import Base
+
+# Import API routers
+from src.api.routes import api_router
+
+# Initialize logger
+logger = get_logger("main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+    Production-ready with proper error handling and resource management.
+    """
+    startup_success = True
+    startup_errors = []
+    
+    # ============ STARTUP ============
+    logger.info("=" * 60)
+    logger.info("STARTING AFIE SERVICE")
+    logger.info(f"Environment: {settings.environment}")
+    logger.info(f"Debug Mode: {settings.debug}")
+    logger.info("=" * 60)
+    
+    try:
+        # 1. Database initialization
+        logger.info("Initializing database connection...")
+        async with engine.begin() as conn:
+            # Create tables if they don't exist
+            await conn.run_sync(Base.metadata.create_all)
+            logger.info("✓ Database tables verified/created")
+            
+            # Test connection
+            from sqlalchemy import text
+            result = await conn.execute(text("SELECT version()"))
+            db_version = result.scalar()
+            logger.info(f"✓ Connected to PostgreSQL: {db_version}")
+    except Exception as e:
+        startup_success = False
+        error_msg = f"Database initialization failed: {str(e)}"
+        startup_errors.append(error_msg)
+        logger.error(error_msg)
+        if settings.debug:
+            logger.error(traceback.format_exc())
+    
+        # 2. Redis initialization (optional)
+        redis_client = None
+        redis_available = False
+        try:
+            logger.info("Initializing Redis connection...")
+            redis_client = await get_redis_client()
+            await redis_client.ping()
+            redis_available = True
+            logger.info("✓ Redis connection established")
+        except Exception as e:
+            # Redis is optional for now - log warning but continue
+            warning_msg = f"Redis connection failed (optional): {str(e)}"
+            logger.warning(warning_msg)
+            startup_errors.append(f"Warning: {warning_msg}")
+            if settings.debug:
+                logger.warning(traceback.format_exc())

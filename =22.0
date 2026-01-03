@@ -1,0 +1,2 @@
+Requirement already satisfied: packaging in d:\agrogram-afie\venv\lib\site-packages (21.3)
+Requirement already satisfied: pyparsing!=3.0.5,>=2.0.2 in d:\agrogram-afie\venv\lib\site-packages (from packaging) (3.3.1)

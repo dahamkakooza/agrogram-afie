@@ -1,0 +1,522 @@
+"""
+MAIN APPLICATION ENTRY POINT
+Adaptive Farm Intelligence Engine (AFIE) - Production Ready
+"""
+import asyncio
+import time
+import traceback
+from contextlib import asynccontextmanager
+from typing import Dict, Any
+from fastapi import FastAPI, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+import uvicorn
+
+# Import configuration
+from src.config.settings import settings
+from src.config.logging_config import get_logger
+from src.config.redis_config import get_redis_client, close_redis_connections
+
+# Import database
+from src.data.database.base import engine, get_db, create_tables
+from src.data.database.models import Base
+
+# Import API routers
+from src.api.routes import api_router
+
+# Initialize logger
+logger = get_logger("main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+    Production-ready with proper error handling and resource management.
+    """
+    startup_success = True
+    startup_errors = []
+    
+    # ============ STARTUP ============
+    logger.info("=" * 60)
+    logger.info("STARTING AFIE SERVICE")
+    logger.info(f"Environment: {settings.environment}")
+    logger.info(f"Debug Mode: {settings.debug}")
+    logger.info("=" * 60)
+    
+    try:
+        # 1. Database initialization
+        logger.info("Initializing database connection...")
+        async with engine.begin() as conn:
+            # Create tables if they don't exist
+            await conn.run_sync(Base.metadata.create_all)
+            logger.info("✓ Database tables verified/created")
+            
+            # Test connection
+            from sqlalchemy import text
+            result = await conn.execute(text("SELECT version()"))
+            db_version = result.scalar()
+            logger.info(f"✓ Connected to PostgreSQL: {db_version}")
+    except Exception as e:
+        startup_success = False
+        error_msg = f"Database initialization failed: {str(e)}"
+        startup_errors.append(error_msg)
+        logger.error(error_msg)
+        if settings.debug:
+            logger.error(traceback.format_exc())
+    
+    try:
+        # 2. Redis initialization
+        logger.info("Initializing Redis connection...")
+        redis_client = await get_redis_client()
+        await redis_client.ping()
+        logger.info("✓ Redis connection established")
+    except Exception as e:
+        startup_success = False
+        error_msg = f"Redis initialization failed: {str(e)}"
+        startup_errors.append(error_msg)
+        logger.error(error_msg)
+        if settings.debug:
+            logger.error(traceback.format_exc())
+    
+    # 3. Feature flag validation
+    logger.info("Checking feature flags...")
+    active_features = []
+    if settings.feature_farm_profiler:
+        active_features.append("farm_profiler")
+    if settings.feature_recommendations:
+        active_features.append("recommendations")
+    if settings.feature_learning_system:
+        active_features.append("learning_system")
+    if settings.feature_predictions:
+        active_features.append("predictions")
+    
+    logger.info(f"✓ Active features: {', '.join(active_features) if active_features else 'None'}")
+    
+    # 4. Startup summary
+    if startup_success:
+        logger.info("=" * 60)
+        logger.info("✅ AFIE SERVICE STARTED SUCCESSFULLY")
+        logger.info(f"📡 API URL: http://{settings.host}:{settings.port}")
+        logger.info(f"📚 Docs URL: http://{settings.host}:{settings.port}/docs")
+        logger.info(f"🏥 Health URL: http://{settings.host}:{settings.port}/health")
+        logger.info("=" * 60)
+    else:
+        logger.error("=" * 60)
+        logger.error("❌ AFIE SERVICE STARTUP FAILED")
+        for error in startup_errors:
+            logger.error(f"  • {error}")
+        logger.error("=" * 60)
+        # Don't raise - let service start but mark as degraded
+    
+    # Yield control to application
+    yield
+    
+    # ============ SHUTDOWN ============
+    logger.info("=" * 60)
+    logger.info("SHUTTING DOWN AFIE SERVICE")
+    logger.info("=" * 60)
+    
+    try:
+        # Close Redis connections
+        await close_redis_connections()
+        logger.info("✓ Redis connections closed")
+    except Exception as e:
+        logger.error(f"Redis shutdown error: {e}")
+    
+    try:
+        # Dispose database engine
+        await engine.dispose()
+        logger.info("✓ Database connections closed")
+    except Exception as e:
+        logger.error(f"Database shutdown error: {e}")
+    
+    logger.info("✅ AFIE SERVICE SHUTDOWN COMPLETE")
+    logger.info("=" * 60)
+
+
+# ============ FASTAPI APPLICATION ============
+app = FastAPI(
+    title="Adaptive Farm Intelligence Engine (AFIE)",
+    description="""
+    ## 🌱 AFIE - The Brain of AgroGram
+    
+    An AI-powered system that learns each farm's unique "personality" and provides 
+    hyper-personalized recommendations that evolve with the farmer.
+    
+    ### Key Features:
+    - **Farm DNA Profiling**: Creates comprehensive farm profiles from minimal data
+    - **Personalized Recommendations**: Operational, strategic, educational, and market advice
+    - **Behavioral Learning**: Adapts to farmer decisions and preferences
+    - **Predictive Analytics**: Yield prediction with uncertainty quantification
+    - **Resource Optimization**: AI-driven farm operation optimization
+    
+    ### API Endpoints:
+    - `/api/v1/farms` - Farm management and DNA profiling
+    - `/api/v1/recommendations` - Personalized farming recommendations
+    - `/api/v1/predictions` - Yield and risk predictions
+    - `/health` - System health monitoring
+    
+    ### Authentication:
+    All endpoints require JWT authentication except:
+    - `/` - Service information
+    - `/health` - Health checks
+    - `/docs` - API documentation
+    """,
+    version="1.0.0",
+    contact={
+        "name": "AgroGram Engineering",
+        "email": "engineering@agrogram.com",
+        "url": "https://agrogram.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    openapi_url="/openapi.json" if settings.debug else None,
+    lifespan=lifespan,
+    openapi_tags=[
+        {
+            "name": "farms",
+            "description": "Farm DNA profiling and management operations",
+        },
+        {
+            "name": "recommendations",
+            "description": "Personalized farming recommendations",
+        },
+        {
+            "name": "predictions",
+            "description": "Yield predictions and risk assessments",
+        },
+        {
+            "name": "learning",
+            "description": "Behavioral learning and adaptation",
+        },
+        {
+            "name": "health",
+            "description": "System health monitoring and metrics",
+        },
+    ],
+)
+
+# ============ MIDDLEWARE ============
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Process-Time", "X-Request-ID"],
+)
+
+# Trusted Hosts Middleware
+if not settings.debug:
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=["agrogram.com", "*.agrogram.com", "localhost", "127.0.0.1"],
+    )
+
+# GZip Compression Middleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Request Timing Middleware
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    """Middleware to add process time header and request ID."""
+    start_time = time.time()
+    request_id = str(time.time_ns())
+    
+    # Store request ID in state
+    request.state.request_id = request_id
+    
+    # Log request
+    logger.info(
+        f"Request {request_id}: {request.method} {request.url.path}",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "client": request.client.host if request.client else "unknown",
+        }
+    )
+    
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # Add headers
+        response.headers["X-Process-Time"] = str(process_time)
+        response.headers["X-Request-ID"] = request_id
+        
+        # Log response
+        logger.info(
+            f"Response {request_id}: {response.status_code} ({process_time:.3f}s)",
+            extra={
+                "request_id": request_id,
+                "status_code": response.status_code,
+                "process_time": process_time,
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        process_time = time.time() - start_time
+        logger.error(
+            f"Request {request_id} failed: {str(e)} ({process_time:.3f}s)",
+            extra={
+                "request_id": request_id,
+                "error": str(e),
+                "process_time": process_time,
+            },
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "Internal server error",
+                "request_id": request_id,
+                "error": str(e) if settings.debug else None,
+            },
+            headers={"X-Request-ID": request_id},
+        )
+
+# ============ ROUTES ============
+# Include API router
+app.include_router(api_router, prefix=settings.api_prefix)
+
+# Root endpoint
+@app.get("/", tags=["info"], summary="Service Information")
+async def root(request: Request):
+    """Get service information and status."""
+    return {
+        "service": "Adaptive Farm Intelligence Engine (AFIE)",
+        "version": "1.0.0",
+        "status": "operational",
+        "environment": settings.environment,
+        "documentation": f"{request.base_url}docs",
+        "health_check": f"{request.base_url}health",
+        "features": {
+            "farm_profiler": settings.feature_farm_profiler,
+            "recommendations": settings.feature_recommendations,
+            "learning_system": settings.feature_learning_system,
+            "predictions": settings.feature_predictions,
+        },
+        "timestamp": time.time(),
+    }
+
+# Health check endpoint
+@app.get("/health", tags=["health"], summary="Health Check")
+async def health():
+    """Comprehensive health check with component status."""
+    health_status = {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "service": "afie",
+        "version": "1.0.0",
+        "environment": settings.environment,
+        "components": {},
+    }
+    
+    # Database health
+    try:
+        async with engine.begin() as conn:
+            from sqlalchemy import text
+            start_time = time.time()
+            result = await conn.execute(text("SELECT 1"))
+            latency = (time.time() - start_time) * 1000
+            health_status["components"]["database"] = {
+                "status": "healthy",
+                "latency_ms": round(latency, 2),
+                "type": "postgresql",
+            }
+    except Exception as e:
+        health_status["components"]["database"] = {
+            "status": "unhealthy",
+            "error": str(e),
+        }
+    
+    # Redis health
+    try:
+        redis_client = await get_redis_client()
+        start_time = time.time()
+        await redis_client.ping()
+        latency = (time.time() - start_time) * 1000
+        health_status["components"]["redis"] = {
+            "status": "healthy",
+            "latency_ms": round(latency, 2),
+            "type": "redis",
+        }
+    except Exception as e:
+        health_status["components"]["redis"] = {
+            "status": "unhealthy",
+            "error": str(e),
+        }
+    
+    # Determine overall status
+    unhealthy_components = [
+        name for name, comp in health_status["components"].items()
+        if comp.get("status") != "healthy"
+    ]
+    
+    if unhealthy_components:
+        health_status["status"] = "degraded"
+        health_status["unhealthy_components"] = unhealthy_components
+    
+    return health_status
+
+# Detailed health endpoint
+@app.get("/health/detailed", tags=["health"], summary="Detailed Health Check")
+async def health_detailed():
+    """Detailed health check with system metrics."""
+    import psutil
+    import platform
+    
+    health_status = await health()
+    
+    # Add system metrics
+    health_status["system"] = {
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
+        "cpu_count": psutil.cpu_count(),
+        "cpu_percent": psutil.cpu_percent(interval=0.1),
+        "memory": {
+            "total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
+            "available_gb": round(psutil.virtual_memory().available / (1024**3), 2),
+            "percent": psutil.virtual_memory().percent,
+        },
+        "disk": {
+            "total_gb": round(psutil.disk_usage("/").total / (1024**3), 2),
+            "free_gb": round(psutil.disk_usage("/").free / (1024**3), 2),
+            "percent": psutil.disk_usage("/").percent,
+        },
+    }
+    
+    return health_status
+
+# ============ ERROR HANDLERS ============
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with detailed information."""
+    errors = []
+    for error in exc.errors():
+        errors.append({
+            "field": ".".join(str(loc) for loc in error.get("loc", [])),
+            "message": error.get("msg"),
+            "type": error.get("type"),
+        })
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Validation failed",
+            "errors": errors,
+            "request_id": getattr(request.state, "request_id", None),
+        },
+        headers={"X-Request-ID": getattr(request.state, "request_id", "")},
+    )
+
+@app.exception_handler(404)
+async def not_found_exception_handler(request: Request, exc):
+    """Handle 404 errors."""
+    return JSONResponse(
+        status_code=404,
+        content={
+            "detail": f"Endpoint {request.url.path} not found",
+            "documentation": f"{request.base_url}docs",
+            "request_id": getattr(request.state, "request_id", None),
+        },
+        headers={"X-Request-ID": getattr(request.state, "request_id", "")},
+    )
+
+@app.exception_handler(500)
+async def internal_exception_handler(request: Request, exc):
+    """Handle 500 errors."""
+    error_detail = str(exc) if settings.debug else "Internal server error"
+    
+    logger.error(
+        f"Internal server error: {error_detail}",
+        extra={
+            "request_id": getattr(request.state, "request_id", None),
+            "path": request.url.path,
+            "method": request.method,
+        },
+        exc_info=True,
+    )
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "request_id": getattr(request.state, "request_id", None),
+            "error": error_detail if settings.debug else None,
+        },
+        headers={"X-Request-ID": getattr(request.state, "request_id", "")},
+    )
+
+# ============ CUSTOM OPENAPI ============
+def custom_openapi():
+    """Generate custom OpenAPI schema."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    
+    # Add security schemes
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter JWT token in format: Bearer <token>",
+        }
+    }
+    
+    # Add global security requirement
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    
+    # Add servers
+    openapi_schema["servers"] = [
+        {
+            "url": "http://localhost:8000",
+            "description": "Local development server",
+        },
+        {
+            "url": "https://api.agrogram.com/afie",
+            "description": "Production API",
+        },
+    ]
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
+# ============ APPLICATION STARTUP ============
+if __name__ == "__main__":
+    uvicorn.run(
+        "src.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.reload,
+        workers=settings.workers,
+        log_level=settings.log_level.lower(),
+        log_config=None,  # Use our custom logging
+        timeout_keep_alive=30,
+        limit_concurrency=100,
+        limit_max_requests=1000,
+        access_log=True,
+    )
