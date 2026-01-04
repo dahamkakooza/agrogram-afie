@@ -1,0 +1,54 @@
+# render.yaml
+services:
+  # Main Web Service
+  - type: web
+    name: agrogram-afie
+    env: python
+    region: oregon  # or singapore, frankfurt, ohio
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      pip install gunicorn
+    startCommand: gunicorn src.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agrogram-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: REDIS_ENABLED
+        value: false
+      - key: FEATURE_PREDICTIONS
+        value: true
+      - key: FEATURE_OPTIMIZATION
+        value: true
+      - key: FEATURE_RISK_ASSESSMENT
+        value: true
+      - key: FEATURE_MODEL_MANAGEMENT
+        value: true
+      - key: FEATURE_ETL
+        value: true
+
+  # PostgreSQL Database
+  - type: postgres
+    name: agrogram-db
+    plan: free
+    ipAllowList: []  # Allow all IPs (or specify for security)
+
+# Optional: Cron jobs for data updates
+jobs:
+  - type: cron
+    name: update-weather-data
+    schedule: "0 */6 * * *"  # Every 6 hours
+    startCommand: python src/data/collectors/weather_updater.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agrogram-db
+          property: connectionString
