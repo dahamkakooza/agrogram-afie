@@ -136,5 +136,31 @@ class Settings(BaseSettings):
         """Check if running in testing environment."""
         return self.environment.lower() == "testing"
 
+     # Render-specific settings
+    @property
+    def is_render(self) -> bool:
+        """Check if running on Render."""
+        return "RENDER" in os.environ
+    
+    @property
+    def database_url_async(self) -> str:
+        """Get async database URL for Render."""
+        if self.is_render:
+            # Render provides DATABASE_URL
+            db_url = os.getenv("DATABASE_URL", "")
+            # Convert to asyncpg format if needed
+            if db_url.startswith("postgres://"):
+                return db_url.replace("postgres://", "postgresql+asyncpg://")
+        return self.database_url
+    
+    # Update allowed origins for Render
+    @field_validator("allowed_origins")
+    def set_allowed_origins(cls, v):
+        if os.getenv("RENDER_EXTERNAL_URL"):
+            # Add Render URL to allowed origins
+            render_url = os.getenv("RENDER_EXTERNAL_URL")
+            if render_url not in v:
+                v.append(render_url)
+        return v
 
 settings = Settings()
