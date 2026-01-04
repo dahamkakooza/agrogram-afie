@@ -99,6 +99,11 @@ class Settings(BaseSettings):
     feature_recommendations: bool = Field(default=False, description="Enable recommendations")
     feature_learning_system: bool = Field(default=False, description="Enable learning system")
     feature_predictions: bool = Field(default=False, description="Enable predictions")
+    feature_optimization: bool = Field(default=False, description="Enable resource optimization")  # ADD THIS
+    feature_risk_assessment: bool = Field(default=False, description="Enable risk assessment")  # ADD THIS
+    feature_model_management: bool = Field(default=False, description="Enable model management")  # ADD THIS
+    feature_etl: bool = Field(default=False, description="Enable ETL pipeline")  # ADD THIS
+
     
     @field_validator("secret_key")
     def validate_secret_key(cls, v: str) -> str:
