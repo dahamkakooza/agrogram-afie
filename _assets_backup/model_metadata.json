@@ -1,0 +1,98 @@
+{
+  "model": "agriyouthnet_context_plus",
+  "version": "1.0.0",
+  "params": 140938,
+  "num_classes": 10,
+  "class_names": [
+    "Maize_Northern_Leaf_Blight",
+    "Maize_Common_Rust",
+    "Maize_Healthy",
+    "Tomato_Early_Blight",
+    "Tomato_Late_Blight",
+    "Tomato_Leaf_Mold",
+    "Tomato_Healthy",
+    "Potato_Early_Blight",
+    "Potato_Late_Blight",
+    "Potato_Healthy"
+  ],
+  "context_dim": 4,
+  "crop_index": {
+    "maize": 0,
+    "tomato": 1,
+    "potato": 2,
+    "other": 3
+  },
+  "input_size": 224,
+  "preprocessing": {
+    "range": "[0,1]",
+    "steps": [
+      "PIL: Image.open(path).convert('RGB').resize((224,224))",
+      "numpy: np.array(img).astype(np.float32) / 255.0",
+      "NO further normalization"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "leaf_image",
+      "shape": [
+        1,
+        224,
+        224,
+        3
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "context_vector",
+      "shape": [
+        1,
+        4
+      ],
+      "dtype": "float32"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "class_probs",
+      "shape": [
+        1,
+        10
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "attention_weights",
+      "shape": [
+        1,
+        4
+      ],
+      "dtype": "float32"
+    }
+  ],
+  "quantization": "INT8 (post-training, representative-dataset calibration)",
+  "files": {
+    "f32": "agriyouthnet_context_plus_f32.tflite",
+    "int8": "agriyouthnet_context_plus_int8.tflite"
+  },
+  "sizes_kb": {
+    "f32": 561.96,
+    "int8": 176.82
+  },
+  "accuracy": {
+    "keras_val": 0.9802,
+    "f32_val": 0.9802,
+    "int8_val": 0.9781,
+    "f32_drop_pp": 0.0,
+    "int8_drop_pp": 0.21
+  },
+  "targets": {
+    "size_under_kb": 200,
+    "accuracy_drop_under_pp": 1.0
+  },
+  "training": {
+    "n_per_class": 500,
+    "batch_size": 64,
+    "epochs_run": 35,
+    "augmentation": "off"
+  }
+}

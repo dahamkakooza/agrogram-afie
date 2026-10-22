@@ -533,3 +533,8 @@ class SystemEventDB(Base, TimestampMixin):
     
     def __repr__(self):
         return f"<SystemEventDB(id={self.id}, event_type='{self.event_type}', status='{self.status}')>"
+# --- Disease diagnosis models (capstone addition) ----------------
+from src.data.database.models_diagnosis import (  # noqa: F401, E402
+    Diagnosis,
+    FieldValidationImage,
+)

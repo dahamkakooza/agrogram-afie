@@ -1,111 +1,124 @@
 import os
 from typing import List, Optional
+
 from pydantic import Field, PostgresDsn, RedisDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore"
+        extra="ignore",
     )
-    
-    # Application
+
+    # ─── Application ─────────────────────────────────────────────
     app_name: str = Field(default="AFIE", description="Application name")
     environment: str = Field(default="development", description="Runtime environment")
     debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
-    
-    # Server
+
+    # ─── Server ──────────────────────────────────────────────────
     host: str = Field(default="0.0.0.0", description="Server host")
     port: int = Field(default=8000, description="Server port")
     workers: int = Field(default=4, description="Number of worker processes")
     reload: bool = Field(default=False, description="Auto-reload for development")
-    
-    # Database
+
+    # ─── Database ────────────────────────────────────────────────
     database_url: PostgresDsn = Field(
         default="postgresql://user:pass@localhost:5432/afie_db",
-        description="PostgreSQL connection URL"
+        description="PostgreSQL connection URL",
     )
     database_pool_size: int = Field(default=20, description="Database connection pool size")
     database_max_overflow: int = Field(default=10, description="Max overflow connections")
     database_echo: bool = Field(default=False, description="Echo SQL queries")
-    
-    # Redis
+
+    # ─── Redis ───────────────────────────────────────────────────
     redis_url: RedisDsn = Field(
         default="redis://localhost:6379",
-        description="Redis connection URL"
+        description="Redis connection URL",
     )
     redis_pool_size: int = Field(default=10, description="Redis connection pool size")
     redis_max_connections: int = Field(default=50, description="Max Redis connections")
-    
-    # Security
+
+    # ─── Security ────────────────────────────────────────────────
     secret_key: str = Field(
         default="your-secret-key-change-in-production",
-        description="Secret key for JWT tokens"
+        description="Secret key for JWT tokens",
     )
     algorithm: str = Field(default="HS256", description="JWT algorithm")
     access_token_expire_minutes: int = Field(default=30, description="Access token expiry")
     refresh_token_expire_days: int = Field(default=7, description="Refresh token expiry")
-    
-    # CORS
+
+    # ─── CORS ────────────────────────────────────────────────────
     allowed_origins: List[str] = Field(
         default=["http://localhost:3000"],
-        description="Allowed CORS origins"
+        description="Allowed CORS origins",
     )
     allowed_methods: List[str] = Field(
         default=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        description="Allowed HTTP methods"
+        description="Allowed HTTP methods",
     )
     allowed_headers: List[str] = Field(
         default=["*"],
-        description="Allowed HTTP headers"
+        description="Allowed HTTP headers",
     )
-    
-    
-    
-    
-    
-    # API Configuration
+
+    # ─── API ─────────────────────────────────────────────────────
     api_prefix: str = Field(default="/api/v1", description="API URL prefix")
     api_title: str = Field(default="AFIE API", description="API documentation title")
     api_description: str = Field(default="Adaptive Farm Intelligence Engine API", description="API description")
-    api_version: str = Field(default="0.1.0", description="API version")# API Configuration
-    api_prefix: str = Field(default="/api/v1", description="API URL prefix")
-    api_title: str = Field(default="AFIE API", description="API documentation title")
-    api_description: str = Field(default="Adaptive Farm Intelligence Engine API", description="API description")
-    api_version: str = Field(default="0.1.0", description="API version")# External APIs
+    api_version: str = Field(default="0.1.0", description="API version")
+
+    # ─── External APIs ───────────────────────────────────────────
     weather_api_key: Optional[str] = Field(default=None, description="Weather API key")
     soil_api_key: Optional[str] = Field(default=None, description="Soil data API key")
     market_api_key: Optional[str] = Field(default=None, description="Market data API key")
     satellite_api_key: Optional[str] = Field(default=None, description="Satellite imagery API key")
-    
-    # ML Configuration
+
+    # ─── ML ──────────────────────────────────────────────────────
     ml_models_path: str = Field(default="./models", description="Path to ML models")
     ml_cache_size: int = Field(default=1000, description="ML prediction cache size")
     ml_prediction_timeout: int = Field(default=10, description="ML prediction timeout in seconds")
-    
-    # Monitoring
+
+    # ─── Monitoring ──────────────────────────────────────────────
     prometheus_enabled: bool = Field(default=True, description="Enable Prometheus metrics")
     jaeger_enabled: bool = Field(default=False, description="Enable Jaeger tracing")
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
-    
-    # Feature Flags
+
+    # ─── Feature Flags ───────────────────────────────────────────
     feature_farm_profiler: bool = Field(default=True, description="Enable farm profiler")
     feature_recommendations: bool = Field(default=False, description="Enable recommendations")
     feature_learning_system: bool = Field(default=False, description="Enable learning system")
     feature_predictions: bool = Field(default=False, description="Enable predictions")
-    feature_optimization: bool = Field(default=False, description="Enable resource optimization")  # ADD THIS
-    feature_risk_assessment: bool = Field(default=False, description="Enable risk assessment")  # ADD THIS
-    feature_model_management: bool = Field(default=False, description="Enable model management")  # ADD THIS
-    feature_etl: bool = Field(default=False, description="Enable ETL pipeline")  # ADD THIS
+    feature_optimization: bool = Field(default=False, description="Enable resource optimization")
+    feature_risk_assessment: bool = Field(default=False, description="Enable risk assessment")
+    feature_model_management: bool = Field(default=False, description="Enable model management")
+    feature_etl: bool = Field(default=False, description="Enable ETL pipeline")
 
-    
+    # ─── Disease diagnosis (capstone) ────────────────────────────
+    feature_disease_diagnosis: bool = Field(
+        default=True, description="Enable disease diagnosis module"
+    )
+    disease_model_path: str = Field(
+        default="models/agriyouthnet_context_plus_int8.tflite",
+        description="Path to disease model TFLite file",
+    )
+    disease_metadata_path: str = Field(
+        default="models/agriyouthnet_context_plus_int8.json",
+        description="Path to disease model metadata",
+    )
+    upload_dir: str = Field(
+        default="data/uploads/leaf_images",
+        description="Directory for uploaded leaf images",
+    )
+
+    # ─── Validators ──────────────────────────────────────────────
     @field_validator("secret_key")
+    @classmethod
     def validate_secret_key(cls, v: str) -> str:
         """Validate secret key length and complexity."""
         if len(v) < 32:
@@ -113,54 +126,33 @@ class Settings(BaseSettings):
         if v == "your-secret-key-change-in-production":
             raise ValueError("Please change the default SECRET_KEY in production")
         return v
-    
+
     @field_validator("allowed_origins")
+    @classmethod
     def validate_origins(cls, v: List[str]) -> List[str]:
-        """Validate CORS origins."""
+        """Validate CORS origins and append Render external URL if present."""
         if "*" in v and len(v) > 1:
             raise ValueError("Cannot mix '*' with specific origins")
+        render_url = os.getenv("RENDER_EXTERNAL_URL")
+        if render_url and render_url not in v:
+            v.append(render_url)
         return v
-    
+
+    # ─── Environment properties ──────────────────────────────────
     @property
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.environment.lower() == "development"
-    
+
     @property
     def is_production(self) -> bool:
         """Check if running in production environment."""
         return self.environment.lower() == "production"
-    
+
     @property
     def is_testing(self) -> bool:
         """Check if running in testing environment."""
         return self.environment.lower() == "testing"
 
-     # Render-specific settings
-    @property
-    def is_render(self) -> bool:
-        """Check if running on Render."""
-        return "RENDER" in os.environ
-    
-    @property
-    def database_url_async(self) -> str:
-        """Get async database URL for Render."""
-        if self.is_render:
-            # Render provides DATABASE_URL
-            db_url = os.getenv("DATABASE_URL", "")
-            # Convert to asyncpg format if needed
-            if db_url.startswith("postgres://"):
-                return db_url.replace("postgres://", "postgresql+asyncpg://")
-        return self.database_url
-    
-    # Update allowed origins for Render
-    @field_validator("allowed_origins")
-    def set_allowed_origins(cls, v):
-        if os.getenv("RENDER_EXTERNAL_URL"):
-            # Add Render URL to allowed origins
-            render_url = os.getenv("RENDER_EXTERNAL_URL")
-            if render_url not in v:
-                v.append(render_url)
-        return v
 
 settings = Settings()
