@@ -7281,3 +7281,164 @@ ConnectionRefusedError: [WinError 1225] The remote computer refused the network 
 2026-10-22 19:48:50 - afie.main - INFO - ✅ WEEK 7-8 MODULES INTEGRATED: 0/5 active
 2026-10-22 19:48:50 - afie.main - INFO - ✅ DISEASE DIAGNOSIS: active (AgriYouthNet-Context+)
 2026-10-22 19:48:50 - afie.main - INFO - ============================================================
+2026-10-23 12:56:17 - afie.database.base - INFO - Database engine created with pool size: 20
+2026-10-23 12:56:32 - model_manager - INFO - ✅ ModelManager initialized with registry at ./models/registry
+2026-10-23 12:56:33 - etl_pipeline - INFO - ✅ ETLPipeline initialized
+2026-10-23 12:56:33 - afie.advanced_routes - INFO - ✅ Week 7-8 modules imported successfully from actual locations
+2026-10-23 12:56:33 - model_manager - INFO - ✅ ModelManager initialized with registry at ./models/registry
+2026-10-23 12:56:33 - etl_pipeline - INFO - ✅ ETLPipeline initialized
+2026-10-23 12:56:33 - afie.advanced_routes - INFO - ✅ Week 7-8 modules initialized successfully
+2026-10-23 12:56:33 - afie.main - INFO - ============================================================
+2026-10-23 12:56:33 - afie.main - INFO - STARTING AFIE SERVICE - WEEK 7-8 + DISEASE DIAGNOSIS
+2026-10-23 12:56:33 - afie.main - INFO - Environment: development
+2026-10-23 12:56:33 - afie.main - INFO - Debug Mode: True
+2026-10-23 12:56:33 - afie.main - INFO - ============================================================
+2026-10-23 12:56:33 - afie.main - INFO - Initializing database connection...
+2026-10-23 12:56:37 - afie.main - ERROR - Database initialization failed: [WinError 1225] The remote computer refused the network connection
+2026-10-23 12:56:37 - afie.main - ERROR - Traceback (most recent call last):
+  File "D:\agrogram-afie\src\main.py", line 65, in lifespan
+    async with engine.begin() as conn:
+  File "C:\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\ext\asyncio\engine.py", line 1061, in begin
+    async with conn:
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\ext\asyncio\base.py", line 125, in __aenter__
+    return await self.start(is_ctxmanager=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\ext\asyncio\engine.py", line 270, in start
+    await greenlet_spawn(self.sync_engine.connect)
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 190, in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 3268, in connect
+    return self._connection_cls(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 145, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 3292, in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\base.py", line 452, in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\base.py", line 1269, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\base.py", line 716, in checkout
+    rec = pool._do_get()
+          ^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\impl.py", line 169, in _do_get
+    with util.safe_reraise():
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\impl.py", line 167, in _do_get
+    return self._create_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\base.py", line 393, in _create_connection
+    return _ConnectionRecord(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\base.py", line 678, in __init__
+    self.__connect()
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\base.py", line 902, in __connect
+    with util.safe_reraise():
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\pool\base.py", line 898, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\engine\create.py", line 637, in connect
+    return dialect.connect(*cargs, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\engine\default.py", line 616, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 936, in connect
+    await_only(creator_fn(*arg, **kw)),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 125, in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 185, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\asyncpg\connection.py", line 2329, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\asyncpg\connect_utils.py", line 1017, in _connect
+    raise last_error or exceptions.TargetServerAttributeNotMatched(
+  File "D:\agrogram-afie\venv\Lib\site-packages\asyncpg\connect_utils.py", line 991, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\asyncpg\connect_utils.py", line 828, in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\asyncpg\connect_utils.py", line 873, in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+  File "D:\agrogram-afie\venv\Lib\site-packages\asyncpg\connect_utils.py", line 744, in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\asyncio\base_events.py", line 1127, in create_connection
+    raise exceptions[0]
+  File "C:\Python312\Lib\asyncio\base_events.py", line 1104, in create_connection
+    sock = await self._connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\asyncio\base_events.py", line 1007, in _connect_sock
+    await self.sock_connect(sock, address)
+  File "C:\Python312\Lib\asyncio\proactor_events.py", line 729, in sock_connect
+    return await self._proactor.connect(sock, address)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\asyncio\windows_events.py", line 803, in _poll
+    value = callback(transferred, key, ov)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\asyncio\windows_events.py", line 599, in finish_connect
+    ov.getresult()
+ConnectionRefusedError: [WinError 1225] The remote computer refused the network connection
+
+2026-10-23 12:56:37 - afie.main - INFO - Initializing Redis connection...
+2026-10-23 12:56:39 - afie.main - INFO - ✓ Redis connection established
+2026-10-23 12:56:39 - afie.main - INFO - Initializing disease diagnosis model...
+2026-10-23 12:56:50 - afie.disease_model - INFO - Loading TFLite model: agriyouthnet_context_plus_int8.tflite
+2026-10-23 12:56:50 - afie.disease_model - INFO - ✓ Disease model loaded: v1.0.0, 10 classes, size=176.8 KB
+2026-10-23 12:56:50 - afie.main - INFO - ✓ Disease model ready: v1.0.0 (176.82 KB, 10 classes)
+2026-10-23 12:56:50 - afie.main - INFO - Checking feature flags...
+2026-10-23 12:56:50 - afie.main - INFO - ✓ Active features: farm_profiler, disease_diagnosis
+2026-10-23 12:56:50 - afie.main - ERROR - ============================================================
+2026-10-23 12:56:50 - afie.main - ERROR - ❌ AFIE SERVICE STARTUP FAILED
+2026-10-23 12:56:50 - afie.main - ERROR -   • Database initialization failed: [WinError 1225] The remote computer refused the network connection
+2026-10-23 12:56:50 - afie.main - ERROR - ============================================================
+2026-10-23 13:25:47 - afie.main - INFO - Shutting down AFIE service...
+2026-10-23 13:25:47 - afie.main - INFO - ✓ Disease model released
+2026-10-23 13:25:47 - afie.main - INFO - ✓ Redis connections closed
+2026-10-23 13:25:47 - afie.main - INFO - ✓ Database connections closed
+2026-10-23 13:25:47 - afie.main - INFO - ✅ AFIE service shutdown complete
+2026-10-23 13:30:51 - afie.database.base - INFO - Database engine created with pool size: 20
+2026-10-23 13:30:57 - model_manager - INFO - ✅ ModelManager initialized with registry at ./models/registry
+2026-10-23 13:30:57 - etl_pipeline - INFO - ✅ ETLPipeline initialized
+2026-10-23 13:30:57 - afie.advanced_routes - INFO - ✅ Week 7-8 modules imported successfully from actual locations
+2026-10-23 13:30:58 - model_manager - INFO - ✅ ModelManager initialized with registry at ./models/registry
+2026-10-23 13:30:58 - etl_pipeline - INFO - ✅ ETLPipeline initialized
+2026-10-23 13:30:58 - afie.advanced_routes - INFO - ✅ Week 7-8 modules initialized successfully
+2026-10-23 13:30:58 - afie.main - INFO - ============================================================
+2026-10-23 13:30:58 - afie.main - INFO - STARTING AFIE SERVICE - WEEK 7-8 + DISEASE DIAGNOSIS
+2026-10-23 13:30:58 - afie.main - INFO - Environment: development
+2026-10-23 13:30:58 - afie.main - INFO - Debug Mode: True
+2026-10-23 13:30:58 - afie.main - INFO - ============================================================
+2026-10-23 13:30:58 - afie.main - INFO - Initializing database connection...
+2026-10-23 13:30:58 - afie.main - INFO - ✓ Database tables verified/created
+2026-10-23 13:30:58 - afie.main - INFO - ✓ Connected to PostgreSQL: PostgreSQL 17.6 on x86_64-windows, compiled by msvc-19.44.35213, 64-bit
+2026-10-23 13:30:58 - afie.main - INFO - Initializing Redis connection...
+2026-10-23 13:31:00 - afie.main - INFO - ✓ Redis connection established
+2026-10-23 13:31:00 - afie.main - INFO - Initializing disease diagnosis model...
+2026-10-23 13:31:05 - afie.disease_model - INFO - Loading TFLite model: agriyouthnet_context_plus_int8.tflite
+2026-10-23 13:31:05 - afie.disease_model - INFO - ✓ Disease model loaded: v1.0.0, 10 classes, size=176.8 KB
+2026-10-23 13:31:05 - afie.main - INFO - ✓ Disease model ready: v1.0.0 (176.82 KB, 10 classes)
+2026-10-23 13:31:05 - afie.main - INFO - Checking feature flags...
+2026-10-23 13:31:05 - afie.main - INFO - ✓ Active features: farm_profiler, disease_diagnosis
+2026-10-23 13:31:05 - afie.main - INFO - ============================================================
+2026-10-23 13:31:05 - afie.main - INFO - ✅ AFIE SERVICE STARTED SUCCESSFULLY
+2026-10-23 13:31:05 - afie.main - INFO - ✅ WEEK 7-8 MODULES INTEGRATED: 0/5 active
+2026-10-23 13:31:05 - afie.main - INFO - ✅ DISEASE DIAGNOSIS: active (AgriYouthNet-Context+)
+2026-10-23 13:31:05 - afie.main - INFO - ============================================================
